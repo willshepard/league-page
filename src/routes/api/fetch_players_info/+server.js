@@ -1,6 +1,4 @@
 import { leagueID } from "$lib/utils/leagueInfo";
-import { round } from "$lib/utils/helperFunctions/universalFunctions";
-import { waitForAll } from "$lib/utils/helperFunctions/multiPromise";
 import { json, error } from '@sveltejs/kit';
 
 /**
@@ -21,22 +19,20 @@ export async function GET() {
 
         // Map NBA players into frontend-friendly structure
         const computedPlayers = {};
-
         for (const id in nbaData) {
             const p = nbaData[id];
-
             computedPlayers[id] = {
-                fn: p.first_name,        // first name
-                ln: p.last_name,         // last name
-                pos: p.position,         // PG, SG, SF, PF, C
-                t: p.team || null,       // NBA team
-                is: p.injury_status || null, // injury status if available
-                wi: {}                   // optional weekly info, leave empty for now
+                fn: p.first_name || "",        // first name
+                ln: p.last_name || "",         // last name
+                pos: p.position || "N/A",      // PG, SG, SF, PF, C
+                t: p.team || null,             // NBA team abbreviation
+                is: p.injury_status || null,   // injury status if available
+                nba_team: p.team || null,      // full team name/abbr
+                wi: {}                         // weekly info, empty for now
             };
         }
 
         return json(computedPlayers);
-
     } catch (err) {
         console.error("NBA player fetch error:", err);
         throw error(500, "Unable to fetch NBA players");
