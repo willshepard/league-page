@@ -3,7 +3,7 @@ import {players} from '$lib/stores';
 import { browser } from '$app/environment';
 
 export const loadPlayers = async (servFetch, refresh = false) => {     
-	if(get(players)[1426]) {
+	if (Object.keys(get(players)).length > 0) {
 		return {
             players: get(players),
             stale: false
@@ -19,8 +19,14 @@ export const loadPlayers = async (servFetch, refresh = false) => {
         playersInfo = JSON.parse(localStorage.getItem("playersInfo"));
         expiration = parseInt(localStorage.getItem("expiration"));
     }
-
-    if(playersInfo && playersInfo[1426] && expiration && now > expiration && !refresh) {
+	
+	if (
+	  playersInfo &&
+	  Object.keys(playersInfo).length > 0 &&
+	  expiration &&
+	  now > expiration &&
+	  !refresh
+	) {
         return {
             players: playersInfo,
             stale: true
