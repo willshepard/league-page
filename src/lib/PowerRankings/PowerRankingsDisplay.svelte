@@ -1,95 +1,63 @@
 <script>
 	import BarChart from '$lib/BarChart.svelte';
-    import { generateGraph, getTeamFromTeamManagers, round, predictScores, loadPlayers } from '$lib/utils/helper';
-    export let nflState, rostersData, leagueTeamManagers, playersInfo, leagueData;
-
+    import { generateGraph, getTeamFromTeamManagers, round } from '$lib/utils/helper';
+    export let rostersData, leagueTeamManagers, leagueData;
     const rosters = rostersData.rosters;
-
     let validGraph = false;
-
     let graphs = [];
-
-    let seasonOver = false;
-
-    const buildRankings = () => {
-        const rosterPowers = [];
-        let week = nflState.week;
-        if(week == 0) {
-            week = 1;
-        }
-        let max = 0;
-
+    
+    const buildStandings = () => {
+        const standings = [];
+        let hasData = false;
+        
         for(const rosterID in rosters) {
             const roster = rosters[rosterID];
-            // make sure the roster has players on it
-            if(!roster.players) continue;
-            // if at least one team has players, create the graph
-            validGraph = true;
-
-            const rosterPlayers = [];
-
-            for(const rosterPlayer of roster.players) {
-                if(!players[rosterPlayer]) contnue;
-                rosterPlayers.push({
-                    name: players[rosterPlayer].ln,
-                    pos: players[rosterPlayer].pos,
-                    wi: players[rosterPlayer].wi
-                })
+            
+            // Get wins and losses from metadata
+            let wins = 0;
+            let losses = 0;
+            
+            if(roster.metadata && roster.metadata.record) {
+                const record = roster.metadata.record;
+                for(const result of record) {
+                    if(result === "W") wins++;
+                    if(result === "L") losses++;
+                }
+                hasData = true;
             }
-
-            const rosterPower = {
+            
+            standings.push({
                 rosterID,
                 manager: getTeamFromTeamManagers(leagueTeamManagers, rosterID),
-                powerScore: 0,
-            }
-            const seasonEnd = 18;
-            if(week >= seasonEnd) {
-                seasonOver = true;
-            }
-            for(let i = week; i < seasonEnd; i++) {
-                rosterPower.powerScore += predictScores(rosterPlayers, i, leagueData);
-            }
-            if(rosterPower.powerScore > max) {
-                max = rosterPower.powerScore;
-            }
-            rosterPowers.push(rosterPower);
+                wins: wins,
+                losses: losses,
+                score: roster.settings?.fpts || 0
+            });
         }
-
-        for(const rosterPower of rosterPowers) {
-            rosterPower.powerScore = round(rosterPower.powerScore/max * 100);
+        
+        if(hasData) {
+            validGraph = true;
         }
-
-        const powerGraph = {
-            stats: rosterPowers,
+        
+        // Sort by wins descending
+        standings.sort((a, b) => b.wins - a.wins);
+        
+        const standingsGraph = {
+            stats: standings,
             x: "Manager",
-            y: "Power Ranking",
+            y: "Wins",
             stat: "",
-            header: "Rest of Season Power Rankings",
-            field: "powerScore",
-            short: "ROS Power Ranking"
+            header: "Current Standings",
+            field: "wins",
+            short: "Wins"
         };
-
+        
         graphs = [
-            generateGraph(powerGraph, leagueData.season),
+            generateGraph(standingsGraph, leagueData.season),
         ]
     }
-
-    let players = playersInfo.players;
-
-    buildRankings();
-
-    const refreshPlayers = async () => {
-        const newPlayersInfo = await loadPlayers(null, true);
-        players = newPlayersInfo.players;
-        buildRankings();
-    }
-
-    if(playersInfo.stale) {
-        refreshPlayers();
-    }
-
-    let curGraph = 0;
-
+    
+    buildStandings();
 </script>
 
 <style>
@@ -100,8 +68,8 @@
     }
 </style>
 
-{#if validGraph && !seasonOver}
+{#if validGraph}
     <div class="enclosure">
-        <BarChart {graphs} bind:curGraph={curGraph} {leagueTeamManagers} />
+        <BarChart {graphs} leagueTeamManagers={leagueTeamManagers} />
     </div>
 {/if}
